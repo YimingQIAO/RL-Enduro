@@ -1,5 +1,6 @@
 """Main DQN agent."""
 
+
 class DQNAgent:
     """Class implementing DQN.
 
@@ -7,7 +8,7 @@ class DQNAgent:
     in order to implement the DQNAgnet. This is just to get you
     started. You may need to tweak the parameters, add new ones, etc.
 
-    Feel free to change the functions and funciton parameters that the
+    Feel free to change the functions and function parameters that the
     class provides.
 
     We have provided docstrings to go along with our suggested API.
@@ -38,9 +39,9 @@ class DQNAgent:
     batch_size: int
       How many samples in each minibatch.
     """
+
     def __init__(self,
                  q_network,
-                 preprocessor,
                  memory,
                  policy,
                  gamma,
@@ -48,15 +49,33 @@ class DQNAgent:
                  num_burn_in,
                  train_freq,
                  batch_size):
+        self.q_network_ = q_network
+        self.memory_ = memory
+        self.policy_ = policy
+        self.gamma = gamma
+        self.target_update_freq_ = target_update_freq
+        self.num_burn_in_ = num_burn_in
+        self.train_freq_ = train_freq
+        self.batch_size_ = batch_size
+
+        # define Q network placeholder
+        self.Q = None
+
+        # define network optimizer placeholder
+        self.optimizer = None
+
+        # define replay buffer placeholder
+        self.replay_buffer = None
+
         pass
 
     def compile(self, optimizer, loss_func):
-        """Setup all of the TF graph variables/ops.
+        """Setup all the TF graph variables/ops.
 
         This is inspired by the compile method on the
         keras.models.Model class.
 
-        This is a good place to create the target network, setup your
+        This is a good place to create the target network, set up your
         loss function and any placeholders you might need.
         
         You should use the mean_huber_loss function as your
@@ -67,6 +86,8 @@ class DQNAgent:
         keras.optimizers.Optimizer class. Specifically the Adam
         optimizer.
         """
+        self.optimizer = optimizer(self.Q.parameters(), **optimizer.kwargs)
+
         pass
 
     def calc_q_values(self, state):
@@ -78,7 +99,8 @@ class DQNAgent:
         ------
         Q-values for the state(s)
         """
-        pass
+
+        return self.Q.forward(state)
 
     def select_action(self, state, **kwargs):
         """Select the action based on the current state.
@@ -101,6 +123,7 @@ class DQNAgent:
         --------
         selected action
         """
+
         pass
 
     def update_policy(self):

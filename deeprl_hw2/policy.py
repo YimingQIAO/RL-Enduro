@@ -30,7 +30,7 @@ class Policy:
           An object representing the chosen action. Type depends on
           the hierarchy of policy instances.
         """
-        raise NotImplementedError('This method should be overriden.')
+        raise NotImplementedError('This method should be overridden.')
 
 
 class UniformRandomPolicy(Policy):
