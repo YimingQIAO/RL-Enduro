@@ -91,8 +91,11 @@ class GreedyEpsilonPolicy(Policy):
      Initial probability of choosing a random action. Can be changed
      over time.
     """
-    def __init__(self, epsilon):
-        pass
+
+    def __init__(self, epsilon, num_actions):
+        self.epsilon = epsilon
+        assert num_actions >= 1
+        self.num_actions = num_actions
 
     def select_action(self, q_values, **kwargs):
         """Run Greedy-Epsilon for the given Q-values.
@@ -108,6 +111,11 @@ class GreedyEpsilonPolicy(Policy):
         int:
           The action index chosen.
         """
+        if random.random() < epsilon:
+            aciton = np.random.randint(0, self.num_actions)
+        else:
+            aciton = np.argmax(q_values)
+        return aciton
 
     pass
 
@@ -129,11 +137,13 @@ class LinearDecayGreedyEpsilonPolicy(Policy):
 
     """
 
-    def __init__(self, policy, attr_name, start_value, end_value,
+    def __init__(self, num_actions, start_value, end_value,
                  num_steps):  # noqa: D102
-        pass
+        self.start_value = start_value #1.0
+        self.end_value = end_value#0.01
+        self.epsilon_decay = 0.995
 
-    def select_action(self, **kwargs):
+    def select_action(self, q_values, **kwargs):
         """Decay parameter and select action.
 
         Parameters
@@ -148,8 +158,14 @@ class LinearDecayGreedyEpsilonPolicy(Policy):
         Any:
           Selected action.
         """
-        pass
+        cur_eps = np.max(self.start_value * np.pow(self.epsilon_decay),self.end_value)
+        if random.random() < cur_eps:
+            aciton = np.random.randint(0, self.num_actions)
+        else:
+            aciton = np.argmax(q_values)
+        return aciton
 
     def reset(self):
         """Start the decay over at the start value."""
+        #?
         pass

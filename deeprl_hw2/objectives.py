@@ -24,7 +24,10 @@ def huber_loss(y_true, y_pred, max_grad=1.):
     tf.Tensor, torch.Tensor
       The huber loss.
     """
-    pass
+    huber_loss = torch.nn.SmoothL1Loss(reduce=False, size_average=False)
+    return  huber_loss(y_pred,y_true)
+    # pass
+
 
 
 def mean_huber_loss(y_true, y_pred, max_grad=1.):
@@ -48,4 +51,6 @@ def mean_huber_loss(y_true, y_pred, max_grad=1.):
     tf.Tensor, torch.Tensor
       The mean huber loss.
     """
-    pass
+    huber_loss = torch.nn.SmoothL1Loss(reduce=False, size_average=False)
+    return  torch.mean(huber_loss(y_pred,y_true))
+    # pass

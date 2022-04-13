@@ -1,5 +1,6 @@
 """Main DQN agent."""
-
+from torch import optim
+from policy import *
 
 class DQNAgent:
     """Class implementing DQN.
@@ -57,12 +58,14 @@ class DQNAgent:
         self.num_burn_in_ = num_burn_in
         self.train_freq_ = train_freq
         self.batch_size_ = batch_size
+        self.num_actions = q_network.get_config['num_actions']
 
-        # define Q network placeholder
+        # define Q network placeholder ???
         self.Q = None
 
         # define network optimizer placeholder
         self.optimizer = None
+        self.scheduler = None
 
         # define replay buffer placeholder
         self.replay_buffer = None
@@ -78,7 +81,7 @@ class DQNAgent:
         This is a good place to create the target network, set up your
         loss function and any placeholders you might need.
         
-        You should use the mean_huber_loss function as your
+        You should use the NOTE mean_huber_loss NOTE function as your
         loss_function. You can also experiment with MSE and other
         losses.
 
@@ -86,7 +89,9 @@ class DQNAgent:
         keras.optimizers.Optimizer class. Specifically the Adam
         optimizer.
         """
-        self.optimizer = optimizer(self.Q.parameters(), **optimizer.kwargs)
+        self.Q = self.q_network_
+        self.optimizer = optim.Adam(self.Q.parameters(), **optimizer.kwargs)
+        # self.scheduler = StepLR(self.optimizer, step_size=150, gamma=0.9)
 
         pass
 
@@ -123,7 +128,7 @@ class DQNAgent:
         --------
         selected action
         """
-
+        policy = UniformRandomPolicy(self.num_actions)
         pass
 
     def update_policy(self):
