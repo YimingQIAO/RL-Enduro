@@ -1,11 +1,8 @@
-attrs
-gym
-h5py
-matplotlib
-numpy
-pillow
-protobuf>=3.0
-pydot-ng
-scipy
-semver
--e .
+gym~=0.10.9
+matplotlib~=3.5.1
+torch~=1.11.0
+numpy~=1.22.3
+tensorflow~=2.8.0
+attrs~=21.4.0
+pillow~=9.1.0
+opencv-python~=4.5.5.64

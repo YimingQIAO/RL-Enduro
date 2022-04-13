@@ -5,7 +5,7 @@ implementations and some unimplemented classes that should be useful
 in your code.
 """
 import numpy as np
-import attr
+import random
 
 
 class Policy:
@@ -91,8 +91,9 @@ class GreedyEpsilonPolicy(Policy):
      Initial probability of choosing a random action. Can be changed
      over time.
     """
+
     def __init__(self, epsilon):
-        pass
+        self.epsilon_ = epsilon
 
     def select_action(self, q_values, **kwargs):
         """Run Greedy-Epsilon for the given Q-values.
@@ -108,6 +109,10 @@ class GreedyEpsilonPolicy(Policy):
         int:
           The action index chosen.
         """
+        if random.uniform(0, 1) < self.epsilon_:
+            return np.random.randint(0, q_values.shape[0])
+        else:
+            return np.argmax(q_values)
 
     pass
 
@@ -129,11 +134,13 @@ class LinearDecayGreedyEpsilonPolicy(Policy):
 
     """
 
-    def __init__(self, policy, attr_name, start_value, end_value,
-                 num_steps):  # noqa: D102
-        pass
+    def __init__(self, start_value, end_value, num_steps):  # noqa: D102
+        self.epsilon_step = (end_value - start_value) / num_steps
+        self.epsilon = start_value
+        self.num_steps_ = num_steps
+        self.current_step = 0
 
-    def select_action(self, **kwargs):
+    def select_action(self, q_values, is_training=True):
         """Decay parameter and select action.
 
         Parameters
@@ -148,8 +155,23 @@ class LinearDecayGreedyEpsilonPolicy(Policy):
         Any:
           Selected action.
         """
-        pass
+        # test: greedy
+        if not is_training:
+            return np.argmax(q_values)
+
+        # update epsilon
+        if self.current_step < self.num_steps_:
+            self.epsilon += self.epsilon_step
+            self.current_step += 1
+
+        # epsilon greedy
+        if random.uniform(0, 1) < self.epsilon:
+            return np.random.randint(0, q_values.shape[0])
+        else:
+            return np.argmax(q_values)
 
     def reset(self):
         """Start the decay over at the start value."""
-        pass
+        self.epsilon -= self.current_step * self.epsilon_step
+        self.current_step = 0
+        return
