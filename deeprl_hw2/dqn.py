@@ -6,11 +6,8 @@ import time
 import torch
 from torch.autograd import Variable
 from deeprl_hw2.policy import UniformRandomPolicy, LinearDecayGreedyEpsilonPolicy, GreedyPolicy
-# from deeprl_hw2.tensorboardlogger import TensorboardLogger
 from deeprl_hw2.utils import *
 import numpy as np
-
-# from tensorboardlogger import Logger
 
 LOG_EVERY_N_STEPS = 100
 SAVE_MODEL_EVERY_N_STEPS = 2000
@@ -111,19 +108,51 @@ class DQNAgent:
         self.optimizer = optimizer(self.Q_.parameters(), lr=learning_rate)
         self.loss_func = loss_func()
 
-        pass
+        return
 
-    def calc_q_values(self, state):
-        """Given a state (or batch of states) calculate the Q-values.
+    # def calc_q_values(self, states, is_target, actions=None, dones=None):
+    #     """Given a state (or batch of states) calculate the Q-values.
+    #
+    #     Basically run your network on these states.
+    #
+    #     Return
+    #     ------
+    #     Q-values for the state(s)
+    #     """
+    #     if not is_target:
+    #         q_values = self.Q_(states)
+    #         q_s_a = q_values.gather(1, actions.unsqueeze(1)).squeeze()
+    #     else:
+    #         q_values = self.Q_target_(states)
+    #         q_s_a_max, _ = q_values.max(1)
+    #         q_s_a = (1 - dones) * q_s_a_max
+    #
+    #     return q_s_a
 
-        Basically run your network on these states.
+    def nature_dqn(self, states, actions, rewards, next_states, dones):
+        q_values = self.Q_(states)
+        q_s_a = q_values.gather(1, actions.unsqueeze(1)).sequeeze()
 
-        Return
-        ------
-        Q-values for the state(s)
-        """
+        next_q_values = self.Q_target_(next_states)
+        next_q_s_a, next_a = next_q_values.detach().max(1)
+        next_q_s_a = (1 - dones) * next_q_s_a
 
-        return self.Q_.forward(state)
+        return self.loss_func(rewards + self.gamma * next_q_s_a, q_s_a)
+
+    def double_dqn(self, states, actions, rewards, next_states, dones):
+        q_values = self.Q_(states)
+        q_s_a = q_values.gather(1, actions.unsqueeze(1)).sequeeze()
+
+        next_q_values = self.Q_(next_states)
+        next_q_target_values = self.Q_target_(next_states)
+        _, next_actions = next_q_values.detach().max(1)
+        next_q_s_a = next_q_target_values.gather(1, next_actions.unsqueeze(1)).sequeeze()
+        next_q_s_a = (1 - dones) * next_q_s_a
+
+        return self.loss_func(rewards + self.gamma * next_q_s_a, q_s_a)
+
+    # def __cal_q_values(self, states, actions, ):
+
 
     def InitPolicy(self, num_actions, epsilon_start, epsilon_end_, num_step):
         self.num_action_ = num_actions
@@ -165,35 +194,10 @@ class DQNAgent:
         q_s_a = self.Q_(Variable(state, volatile=True)).cpu()
         return self.decay_policy.select_action(q_s_a.detach().numpy())
 
-    def update_policy(self):
-        """Update your policy.
-
-        Behavior may differ based on what stage of training your
-        in. If you're in training mode then you should check if you
-        should update your network parameters based on the current
-        step and the value you set for train_freq.
-
-        Inside, you'll want to sample a minibatch, calculate the
-        target values, update your network, and then update your
-        target values.
-
-        You might want to return the loss and other metrics as an
-        output. They can help you monitor how training is going.
-        """
-        pass
-
     def fit(self, env, num_iterations, max_episode_length=None):
         """Fit your model to the provided environment.
-
-        It's a good idea to print out things like loss, average reward,
-        Q-values, etc. to see if your agent is actually improving.
-
-        You should probably also periodically save your network
-        weights and any other useful info.
-
-        This is where you should sample actions from your network,
-        collect experience samples and add them to your replay memory,
-        and update your network parameters.
+        Reference: https://www.nature.com/articles/nature14236.pdf
+        Algorithm 1: deep Q-learning with experience replay.
 
         Parameters
         ----------
@@ -208,10 +212,10 @@ class DQNAgent:
           resets. Can help exploration.
         """
         last_obs = env.reset()
-        Q_update_times = 0
+        update_times = 0
         for iteration in range(num_iterations):
             # 1. Check stopping criterion
-            if iteration > 1000000:
+            if iteration > 5000000:
                 break
 
             # 2.  Step the env and store frame
@@ -227,9 +231,6 @@ class DQNAgent:
             next_obs, reward, done, info = env.step(action)
             env.render()
 
-            # clipping the reward, noted in nature paper (Is this necessary? since env has been wrapped)
-            # reward = np.clip(reward, -1.0, 1.0)
-
             # 5. store action and reward in replay buffer
             self.memory_.store_effect(frame_idx, action, reward, done)
 
@@ -241,24 +242,10 @@ class DQNAgent:
             if iteration > self.num_burn_in_ and iteration % self.train_freq_ == 0 and self.memory_.can_sample(
                     self.batch_size_):
                 # get batch
-                states, actions, rewards, next_states, dones = self.memory_.sample(self.batch_size_)
-                states = Variable(torch.from_numpy(states)).type(self.dtype) / 255.0
-                actions = Variable(torch.from_numpy(actions)).type(self.dlongtype)
-                rewards = Variable(torch.from_numpy(rewards)).type(self.dtype)
-                next_states = Variable(torch.from_numpy(next_states)).type(self.dtype) / 255.0
-                dones = Variable(torch.from_numpy(dones)).type(self.dtype)
-
-                # feed states
-                q_values = self.Q_(states)
-                q_s_a = q_values.gather(1, actions.unsqueeze(1)).squeeze()
-
-                # feed next states
-                next_q_values = self.Q_target_(next_states).detach()
-                next_q_value_prime, next_action_prime = next_q_values.max(1)
-                next_q_value_prime = (1 - dones) * next_q_value_prime
+                states, actions, rewards, next_states, dones = self.__batch_sample()
 
                 # get loss
-                loss = self.loss_func(rewards + self.gamma * next_q_value_prime, q_s_a)
+                loss = self.nature_dqn(states, actions, rewards, next_states, dones)
 
                 # backwards pass
                 self.optimizer.zero_grad()
@@ -266,10 +253,10 @@ class DQNAgent:
 
                 # update
                 self.optimizer.step()
-                Q_update_times += 1
+                update_times += 1
 
                 # update target Q network
-                if Q_update_times % self.target_update_freq_ == 0:
+                if update_times % self.target_update_freq_ == 0:
                     self.Q_target_.load_state_dict(self.Q_.state_dict())
 
             # update best mean reward
@@ -281,15 +268,40 @@ class DQNAgent:
 
             # summary
             if iteration % LOG_EVERY_N_STEPS == 0:
-                self.summary(episode_rewards, iteration, mean_episode_reward)
+                self.__summary(episode_rewards, iteration, mean_episode_reward)
 
             # save model
             if iteration % SAVE_MODEL_EVERY_N_STEPS == 0:
-                self.save_model(iteration)
+                self.__save_model(iteration)
 
         return
 
-    def summary(self, episode_rewards, iteration, mean_episode_reward):
+    def evaluate(self, env, num_episodes, max_episode_length=None):
+        """Test your agent with a provided environment.
+
+        You shouldn't update your network parameters here. Also if you
+        have any layers that vary in behavior between train/test time
+        (such as dropout or batch norm), you should set them to test.
+
+        Basically run your policy on the environment and collect stats
+        like cumulative reward, average episode length, etc.
+
+        You can also call the render function here if you want to
+        visually inspect your policy.
+        """
+        pass
+
+    def __batch_sample(self):
+        states, actions, rewards, next_states, dones = self.memory_.sample(self.batch_size_)
+        states = Variable(torch.from_numpy(states)).type(self.dtype) / 255.0
+        actions = Variable(torch.from_numpy(actions)).type(self.dlongtype)
+        rewards = Variable(torch.from_numpy(rewards)).type(self.dtype)
+        next_states = Variable(torch.from_numpy(next_states)).type(self.dtype) / 255.0
+        dones = Variable(torch.from_numpy(dones)).type(self.dtype)
+
+        return states, actions, rewards, next_states, dones
+
+    def __summary(self, episode_rewards, iteration, mean_episode_reward):
         # log
         # for tag, value in self.Q_.named_parameters():
         #     tag = tag.replace('.', '/')
@@ -334,25 +346,10 @@ class DQNAgent:
         #     for tag, value in info.items():
         #         self.logger.to_tf.log_scalar(tag, value, iteration + 1)
 
-    def save_model(self, iteration):
+    def __save_model(self, iteration):
         if not os.path.exists("models"):
             os.makedirs("models")
         add_str = ''
         model_save_path = "models/%s_%d_%s.model" % (
             add_str, iteration, str(time.ctime()).replace(' ', '_'))
         torch.save(self.Q_.state_dict(), model_save_path)
-
-    def evaluate(self, env, num_episodes, max_episode_length=None):
-        """Test your agent with a provided environment.
-
-        You shouldn't update your network parameters here. Also if you
-        have any layers that vary in behavior between train/test time
-        (such as dropout or batch norm), you should set them to test.
-
-        Basically run your policy on the environment and collect stats
-        like cumulative reward, average episode length, etc.
-
-        You can also call the render function here if you want to
-        visually inspect your policy.
-        """
-        pass
