@@ -45,8 +45,10 @@ Q_model = LinearNetwork(input_shape, num_actions)
 
 replay_buffer = ReplayMemory(replay_buffer_size, window_size)
 
+logdir = '/Users/mac_jc/大学/RL/hw2/logs'
+
 agent = DQNAgent(Q_model, replay_buffer, gamma, target_update_freq, num_burn_in, train_freq, batch_size,
-                 learning_starts, './logs')
+                 learning_starts, logdir)
 
 epsilon_start = 1
 epsilon_end = 0.1

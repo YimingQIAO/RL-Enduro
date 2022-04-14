@@ -8,6 +8,7 @@ from torch.autograd import Variable
 from deeprl_hw2.policy import UniformRandomPolicy, LinearDecayGreedyEpsilonPolicy, GreedyPolicy
 from deeprl_hw2.utils import *
 import numpy as np
+from tensorboardX import SummaryWriter
 
 LOG_EVERY_N_STEPS = 100
 SAVE_MODEL_EVERY_N_STEPS = 2000
@@ -70,7 +71,7 @@ class DQNAgent:
         self.train_freq_ = train_freq
         self.batch_size_ = batch_size
         self.learning_starts_ = learning_starts
-        # self.logger = Logger(log_dir)
+        self.logger = SummaryWriter(log_dir=log_dir)
 
         # define network optimizer placeholder
         self.optimizer = None
@@ -136,7 +137,8 @@ class DQNAgent:
 
     def nature_dqn(self, states, actions, rewards, next_states, dones):
         q_values = self.Q_(states)
-        q_s_a = q_values.gather(1, actions.unsqueeze(1)).sequeeze()
+
+        q_s_a = torch.squeeze(q_values.gather(1, actions.unsqueeze(1)))
 
         next_q_values = self.Q_target_(next_states)
         next_q_s_a, next_a = next_q_values.detach().max(1)
@@ -308,10 +310,12 @@ class DQNAgent:
 
     def __summary(self, episode_rewards, iteration, mean_episode_reward):
         # log
-        # for tag, value in self.Q_.named_parameters():
-        #     tag = tag.replace('.', '/')
-        #     self.logger.to_tf.log_histogram(tag, tensor_to_np(value), iteration + 1)
-        #     self.logger.to_tf.log_histogram(tag + '/grad', tensor_to_np(value.grad), iteration + 1)
+        for tag, value in self.Q_.named_parameters():
+            tag = tag.replace('.', '/')
+            # print(value.grad)
+            self.logger.add_histogram(tag, value.detach().numpy(), iteration + 1)
+            if value.grad is not None:
+              self.logger.add_histogram(tag + '/grad', value.grad, iteration + 1)
 
         print("---------------------------------")
         print("Timestep %d" % (iteration,))
@@ -324,32 +328,30 @@ class DQNAgent:
 
         # ============ TensorBoard logging ============#
         # (1) Log the scalar values
-        # info = {
-        #     'learning_started': (iteration > self.learning_starts_),
-        #     'num_episodes': len(episode_rewards),
-        #     'exploration': self.decay_policy.cal_epsilon(),
-        #     'learning_rate': self.optimizer.kwargs['lr'],
-        # }
-        #
-        # for tag, value in info.items():
-        #     self.logger.to_tf.log_scalar(tag, value, iteration + 1)
-        #
-        # if len(episode_rewards) > 0:
-        #     info = {
-        #         'last_episode_rewards': episode_rewards[-1],
-        #     }
-        #
-        #     for tag, value in info.items():
-        #         self.logger.to_tf.log_scalar(tag, value, iteration + 1)
-        #
-        # if self.best_reward != -float('inf'):
-        #     info = {
-        #         'mean_episode_reward_last_100': mean_episode_reward,
-        #         'best_mean_episode_reward': self.best_reward
-        #     }
-        #
-        #     for tag, value in info.items():
-        #         self.logger.to_tf.log_scalar(tag, value, iteration + 1)
+        info = {
+            'learning_started': (iteration > self.learning_starts_),
+            'num_episodes': len(episode_rewards),
+            'exploration': self.decay_policy.epsilon,
+            # 'learning_rate': self.optimizer.kwargs['lr'],
+        }
+        for tag, value in info.items():
+            self.logger.add_scalar(tag, value, iteration + 1)
+        if len(episode_rewards) > 0:
+            info = {
+                'last_episode_rewards': episode_rewards[-1],
+            }
+        
+            for tag, value in info.items():
+                self.logger.add_scalar(tag, value, iteration + 1)
+        
+        if self.best_reward != -float('inf'):
+            info = {
+                'mean_episode_reward_last_100': mean_episode_reward,
+                'best_mean_episode_reward': self.best_reward
+            }
+        
+            for tag, value in info.items():
+                self.logger.add_scalar(tag, value, iteration + 1)
 
     def __save_model(self, iteration):
         if not os.path.exists("models"):
