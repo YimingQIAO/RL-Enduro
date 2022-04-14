@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 
 
@@ -13,10 +12,12 @@ class LinearNetwork(nn.Module):
         self.Q_value = nn.Linear(in_features=num_features, out_features=num_actions)
 
     def forward(self, x):
-        x = torch.flatten(x, 1)
-        return self.Q_value(x)
+        x = x.view(x.size(0), -1)
+        x = self.Q_value(x)
+        return x
 
 
+# Model architecture: https://www.nature.com/articles/nature14236.pdf
 class DQN(nn.Module):
     def __init__(self, in_channels, num_actions):
         super(DQN, self).__init__()
@@ -29,6 +30,7 @@ class DQN(nn.Module):
 
         self.relu = nn.ReLU()
 
+    # input format: batch_size * channels * img_H * img_W
     def forward(self, x):
         x = self.relu(self.conv1(x))
         x = self.relu(self.conv2(x))

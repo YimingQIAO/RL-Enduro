@@ -53,12 +53,13 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.was_real_reset = False
 
     def _step(self, action):
+        # print("EpisodicLifeEnv: I'm called.")
         obs, reward, done, info = self.env.step(action)
         self.was_real_done = done
         # check current lives, make loss of life terminal,
         # then update lives to handle bonus lives
         lives = self.env.unwrapped.ale.lives()
-        if lives < self.lives and lives > 0:
+        if self.lives > lives > 0:
             # for Qbert somtimes we stay in lives == 0 condtion for a few frames
             # so its important to keep lives > 0, so that we only reset once
             # the environment advertises done.
@@ -91,6 +92,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         self._skip = skip
 
     def _step(self, action):
+        # print("MaxAndSkipEnv: I'm called.")
         total_reward = 0.0
         done = None
         for _ in range(self._skip):
@@ -127,6 +129,7 @@ class ProcessFrame84(gym.Wrapper):
         self.observation_space = spaces.Box(low=0, high=255, shape=(84, 84, 1))
 
     def _step(self, action):
+        # print("ProcessFrame84: I'm called.")
         obs, reward, done, info = self.env.step(action)
         return _process_frame84(obs), reward, done, info
 
@@ -136,6 +139,7 @@ class ProcessFrame84(gym.Wrapper):
 
 class ClippedRewardsWrapper(gym.Wrapper):
     def _step(self, action):
+        # print("ClippedRewardsWrapper: I'm called.")
         obs, reward, done, info = self.env.step(action)
         return obs, np.sign(reward), done, info
 
@@ -154,9 +158,17 @@ def wrap_deepmind(env):
     # assert 'NoFrameskip' in env.spec.id
     env = EpisodicLifeEnv(env)
     env = NoopResetEnv(env, noop_max=30)
+
+    #  simple frame-skipping technique: https://www.nature.com/articles/nature14236.pdf Methods/Training details
     env = MaxAndSkipEnv(env, skip=4)
+
+    # for some game, player needs to fire to begin game
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
+
+    # Reduce image into 84 * 84 * 1
     env = ProcessFrame84(env)
+
+    # clipped all positive rewards at 1 and all negative rewards at 1, leaving 0 rewards unchanged.
     env = ClippedRewardsWrapper(env)
     return env
