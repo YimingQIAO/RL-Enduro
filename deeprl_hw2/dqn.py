@@ -75,6 +75,7 @@ class DQNAgent:
 
         # define network optimizer placeholder
         self.optimizer = None
+        self.scheduler = None
         self.loss_func = None
 
         # Policy
@@ -107,6 +108,7 @@ class DQNAgent:
         optimizer.
         """
         self.optimizer = optimizer(self.Q_.parameters(), lr=learning_rate)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1e3, gamma=0.8)
         self.loss_func = loss_func()
 
 
@@ -260,6 +262,7 @@ class DQNAgent:
 
                 # update
                 self.optimizer.step()
+                self.scheduler.step()
                 update_times += 1
 
                 # update target Q network
@@ -330,6 +333,7 @@ class DQNAgent:
         # (1) Log the scalar values
         info = {
             'learning_started': (iteration > self.learning_starts_),
+            'learng_rate':  self.optimizer.param_groups[0]['lr'],
             'num_episodes': len(episode_rewards),
             'exploration': self.decay_policy.epsilon,
             # 'learning_rate': self.optimizer.kwargs['lr'],
