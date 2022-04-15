@@ -168,7 +168,7 @@ class ReplayMemory:
     If you are storing raw Sample objects in your memory, then you may
     not need the end_episode method, and you may want to tweak the
     append method. This will make the sample method easy to implement
-    (just ranomly draw saamples saved in your memory).
+    (just randomly draw samples saved in your memory).
 
     However, the above approach will waste a lot of memory (as states
     will be stored multiple times in s as next state and then s' as
@@ -205,6 +205,10 @@ class ReplayMemory:
         We recommend using a list as a ring buffer. Just track the
         index where the next sample should be inserted in the list.
         """
+        self.max_size_ = max_size
+        self.window_length = window_length
+
+
         pass
 
     def append(self, state, action, reward):
