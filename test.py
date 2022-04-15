@@ -57,9 +57,9 @@ with torch.cuda.device(cuda_device):
 
     epsilon_start = 1
     epsilon_end = 0.1
-    linear_num_frames = 1e5
+    linear_num_frames = 1e6
     agent.InitPolicy(env.action_space.n, epsilon_start, epsilon_end, linear_num_frames)
 
     agent.compile(optimizer=torch.optim.RMSprop, loss_func=torch.nn.HuberLoss, learning_rate=learning_rate)
 
-    agent.fit(env, 100000)#500 0000
+    agent.fit(env, 5000000)#500 0000

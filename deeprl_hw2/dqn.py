@@ -10,8 +10,8 @@ from deeprl_hw2.utils import *
 import numpy as np
 from tensorboardX import SummaryWriter
 
-LOG_EVERY_N_STEPS = 100
-SAVE_MODEL_EVERY_N_STEPS = 2000
+LOG_EVERY_N_STEPS = 1000
+SAVE_MODEL_EVERY_N_STEPS = 50000
 
 
 class DQNAgent:
@@ -236,7 +236,7 @@ class DQNAgent:
             action = self.select_action(obs_tensor, iteration)
 
             next_obs, reward, done, info = env.step(action)
-            image = env.render(mode='rgb_array')
+            # image = env.render(mode='rgb_array')
 
             # 5. store action and reward in replay buffer
             self.memory_.store_effect(frame_idx, action, reward, done)

@@ -4,3 +4,5 @@
 __pycache__/
 gym_monitor/
 models/
+logs/
+*.out
