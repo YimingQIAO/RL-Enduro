@@ -236,7 +236,7 @@ class DQNAgent:
             action = self.select_action(obs_tensor, iteration)
 
             next_obs, reward, done, info = env.step(action)
-            env.render()
+            image = env.render(mode='rgb_array')
 
             # 5. store action and reward in replay buffer
             self.memory_.store_effect(frame_idx, action, reward, done)
@@ -313,7 +313,7 @@ class DQNAgent:
         for tag, value in self.Q_.named_parameters():
             tag = tag.replace('.', '/')
             # print(value.grad)
-            self.logger.add_histogram(tag, value.detach().numpy(), iteration + 1)
+            self.logger.add_histogram(tag, value.detach().cpu().numpy(), iteration + 1)
             if value.grad is not None:
               self.logger.add_histogram(tag + '/grad', value.grad, iteration + 1)
 
