@@ -36,7 +36,7 @@ gamma = 0.99
 num_burn_in = 64
 target_update_freq = 10000  # 10000
 train_freq = 4
-batch_size = 160 #32
+batch_size = 32 #32
 learning_rate = 0.00025
 learning_starts = 50000  # 50000
 
