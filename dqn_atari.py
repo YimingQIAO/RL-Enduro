@@ -2,7 +2,7 @@
 """Run Atari Environment with DQN."""
 import gym
 import os
-from atari_wrappers_deepmind import wrap_deepmind
+from deeprl_hw2.atari_wrappers_deepmind import wrap_deepmind
 import warnings
 from deeprl_hw2.dqn import DQNAgent
 from deeprl_hw2.models import *
@@ -11,6 +11,7 @@ import torch
 from gym import wrappers
 import argparse
 import time
+
 warnings.filterwarnings("ignore")
 
 
@@ -58,6 +59,8 @@ def get_output_folder(parent_dir, env_name):
     ----------
     parent_dir: str
       Path of the directory containing all experiment runs.
+    env_name: str
+      name of game in gym
 
     Returns
     -------
@@ -77,22 +80,20 @@ def main():  # noqa: D103
     parser.add_argument('--log', default='logs', help='Directory to save log to')
     parser.add_argument('--output', default='gym_monitor/', help='Directory to save video to')
     parser.add_argument('--seed', default=0, type=int, help='Random seed')
-    parser.add_argument('--gpu', type=int, default=0,help='GPU to use [default: GPU 0]')
-    parser.add_argument('--memory', type=int, default=1000000,help='replay_buffer_size')
-    parser.add_argument('--gamma', default=0.99, type=float,help='discount factor')
+    parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
+    parser.add_argument('--memory', type=int, default=1000000, help='replay_buffer_size')
+    parser.add_argument('--gamma', default=0.99, type=float, help='discount factor')
     parser.add_argument('--num_burn_in', default=64, type=int, help='num burn in')
     parser.add_argument('--freq', default=10000, type=int, help='Target network update frequency')
     parser.add_argument('--bs', default=32, type=int, help='batch size')
-    parser.add_argument('--lr', default= 0.00025, type=float, help='learning rate')
-    parser.add_argument('--start', default= 50000, type=int, help='Replay start size')
-    parser.add_argument('--eps_max', default= 1, type=float, help='epsilon start')
-    parser.add_argument('--eps_min', default= 0.1, type=float, help='epsilon end')
-    parser.add_argument('--frames', default= 1e6, type=int, help='linear_num_frames')
-    parser.add_argument('--iters',default= 5000000,type=int, help='iters')
-
+    parser.add_argument('--lr', default=0.00025, type=float, help='learning rate')
+    parser.add_argument('--start', default=50000, type=int, help='Replay start size')
+    parser.add_argument('--eps_max', default=1, type=float, help='epsilon start')
+    parser.add_argument('--eps_min', default=0.1, type=float, help='epsilon end')
+    parser.add_argument('--frames', default=1e6, type=int, help='linear_num_frames')
+    parser.add_argument('--iters', default=5000000, type=int, help='iters')
 
     parser.add_argument('--model', default='DQN', type=str, help='LN, DQN, DDQN')
-
 
     args = parser.parse_args()
     args.output = get_output_folder(args.output, args.model)
@@ -107,7 +108,7 @@ def main():  # noqa: D103
     window_size = 4
     gamma = args.gamma
     num_burn_in = args.num_burn_in
-    target_update_freq =  args.freq # 10000
+    target_update_freq = args.freq  # 10000
     train_freq = 4
     batch_size = args.bs
     learning_rate = args.lr
@@ -119,26 +120,26 @@ def main():  # noqa: D103
     cuda_device = args.gpu
 
     with torch.cuda.device(cuda_device):
-      if args.model == 'DQN':
-        Q_model = DQN(input_shape[2], num_actions)
-      elif args.model == 'LN':
-        Q_model = LinearNetwork(input_shape, num_actions)
-      else:
-        raise NotImplementedError
-      Q_model.to(cuda_device)
-      replay_buffer = ReplayMemory(replay_buffer_size, window_size)
+        if args.model == 'DQN':
+            Q_model = DQN(input_shape[2], num_actions)
+        elif args.model == 'LN':
+            Q_model = LinearNetwork(input_shape, num_actions)
+        else:
+            raise NotImplementedError
+        Q_model.to(cuda_device)
+        replay_buffer = ReplayMemory(replay_buffer_size, window_size)
 
-      agent = DQNAgent(Q_model, replay_buffer, gamma, target_update_freq, num_burn_in, train_freq, batch_size,
-                      learning_starts, args.log)
+        agent = DQNAgent(Q_model, replay_buffer, gamma, target_update_freq, num_burn_in, train_freq, batch_size,
+                         learning_starts, args.log)
 
-      epsilon_start = args.eps_max
-      epsilon_end = args.eps_min
-      linear_num_frames = args.frames
-      agent.InitPolicy(env.action_space.n, epsilon_start, epsilon_end, linear_num_frames)
+        epsilon_start = args.eps_max
+        epsilon_end = args.eps_min
+        linear_num_frames = args.frames
+        agent.InitPolicy(env.action_space.n, epsilon_start, epsilon_end, linear_num_frames)
 
-      agent.compile(optimizer=torch.optim.RMSprop, loss_func=torch.nn.HuberLoss, learning_rate=learning_rate)
+        agent.compile(optimizer=torch.optim.RMSprop, loss_func=torch.nn.HuberLoss, learning_rate=learning_rate)
 
-      agent.fit(env, args.iters)#500 0000
+        agent.fit(env, args.iters)  # 500 0000
 
 
 if __name__ == '__main__':

@@ -3,8 +3,6 @@ import random
 
 import numpy as np
 
-from deeprl_hw2.utils import sample_n_unique
-
 
 class ReplayMemory:
     """Interface for replay memories.
@@ -111,12 +109,11 @@ class ReplayMemory:
     def sample(self, batch_size, indexes=None):
         assert self.can_sample(batch_size)
         if not indexes:
-            indexes = sample_n_unique(lambda: random.randint(0, self.num_in_buffer - 2), batch_size)
+            indexes = self.sample_index(lambda: random.randint(0, self.num_in_buffer - 2), batch_size)
 
         return self._encode_sample(indexes)
 
     def _encode_sample(self, idxes):
-        a = [self._encode_observation(idx)[None] for idx in idxes]
         obs_batch = np.concatenate([self._encode_observation(idx)[None] for idx in idxes], 0)
         act_batch = self.action[idxes]
         rew_batch = self.reward[idxes]
@@ -143,3 +140,15 @@ class ReplayMemory:
         else:
             img_h, img_w = self.obs.shape[2], self.obs.shape[3]
             return self.obs[start_idx: end_idx].reshape(-1, img_h, img_w)
+
+    @staticmethod
+    def sample_index(sampling_f, n):
+        """Helper function. Given a function `sampling_f` that returns
+        comparable objects, sample n such unique objects.
+        """
+        res = []
+        while len(res) < n:
+            candidate = sampling_f()
+            if candidate not in res:
+                res.append(candidate)
+        return res

@@ -3,10 +3,10 @@ import os
 import sys
 import time
 
+import gym
 import torch
 from torch.autograd import Variable
 from deeprl_hw2.policy import UniformRandomPolicy, LinearDecayGreedyEpsilonPolicy, GreedyPolicy
-from deeprl_hw2.utils import *
 import numpy as np
 from tensorboardX import SummaryWriter
 
@@ -90,7 +90,7 @@ class DQNAgent:
         self.best_reward = -1
         pass
 
-    def compile(self, optimizer, loss_func,learning_rate):
+    def compile(self, optimizer, loss_func, learning_rate):
         """Setup all the TF graph variables/ops.
 
         This is inspired by the compile method on the
@@ -110,32 +110,6 @@ class DQNAgent:
         self.optimizer = optimizer(self.Q_.parameters(), lr=learning_rate)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1e3, gamma=0.8)
         self.loss_func = loss_func()
-
-
-
-    def calc_q_values(self, state):
-        """Given a state (or batch of states) calculate the Q-values.
-
-        Basically run your network on these states."""
-        return
-    # def calc_q_values(self, states, is_target, actions=None, dones=None):
-
-    #
-    #     Basically run your network on these states.
-    #
-    #     Return
-    #     ------
-    #     Q-values for the state(s)
-    #     """
-    #     if not is_target:
-    #         q_values = self.Q_(states)
-    #         q_s_a = q_values.gather(1, actions.unsqueeze(1)).squeeze()
-    #     else:
-    #         q_values = self.Q_target_(states)
-    #         q_s_a_max, _ = q_values.max(1)
-    #         q_s_a = (1 - dones) * q_s_a_max
-    #
-    #     return q_s_a
 
     def nature_dqn(self, states, actions, rewards, next_states, dones):
         q_values = self.Q_(states)
@@ -159,9 +133,6 @@ class DQNAgent:
         next_q_s_a = (1 - dones) * next_q_s_a
 
         return self.loss_func(rewards + self.gamma * next_q_s_a, q_s_a)
-
-    # def __cal_q_values(self, states, actions, ):
-
 
     def InitPolicy(self, num_actions, epsilon_start, epsilon_end_, num_step):
         self.num_action_ = num_actions
@@ -203,7 +174,7 @@ class DQNAgent:
         q_s_a = self.Q_(Variable(state, volatile=True)).cpu()
         return self.decay_policy.select_action(q_s_a.detach().numpy())
 
-    def fit(self, env, num_iterations, max_episode_length=None):
+    def fit(self, env, num_iterations):
         """Fit your model to the provided environment.
         Reference: https://www.nature.com/articles/nature14236.pdf
         Algorithm 1: deep Q-learning with experience replay.
@@ -216,9 +187,6 @@ class DQNAgent:
           utils.py
         num_iterations: int
           How many samples/updates to perform.
-        max_episode_length: int
-          How long a single episode should last before the agent
-          resets. Can help exploration.
         """
         last_obs = env.reset()
         update_times = 0
@@ -270,7 +238,7 @@ class DQNAgent:
                     self.Q_target_.load_state_dict(self.Q_.state_dict())
 
             # update best mean reward
-            episode_rewards = get_wrapper_by_name(env, "Monitor").get_episode_rewards()
+            episode_rewards = self.get_wrapper_by_name(env, "Monitor").get_episode_rewards()
             mean_episode_reward = -1
             if len(episode_rewards) > 0:
                 mean_episode_reward = np.mean(episode_rewards[-100:])
@@ -299,6 +267,7 @@ class DQNAgent:
         You can also call the render function here if you want to
         visually inspect your policy.
         """
+
         pass
 
     def __batch_sample(self):
@@ -318,7 +287,7 @@ class DQNAgent:
             # print(value.grad)
             self.logger.add_histogram(tag, value.detach().cpu().numpy(), iteration + 1)
             if value.grad is not None:
-              self.logger.add_histogram(tag + '/grad', value.grad, iteration + 1)
+                self.logger.add_histogram(tag + '/grad', value.grad, iteration + 1)
 
         print("---------------------------------")
         print("Timestep %d" % (iteration,))
@@ -333,7 +302,7 @@ class DQNAgent:
         # (1) Log the scalar values
         info = {
             'learning_started': (iteration > self.learning_starts_),
-            'learng_rate':  self.optimizer.param_groups[0]['lr'],
+            'learng_rate': self.optimizer.param_groups[0]['lr'],
             'num_episodes': len(episode_rewards),
             'exploration': self.decay_policy.epsilon,
             # 'learning_rate': self.optimizer.kwargs['lr'],
@@ -344,16 +313,16 @@ class DQNAgent:
             info = {
                 'last_episode_rewards': episode_rewards[-1],
             }
-        
+
             for tag, value in info.items():
                 self.logger.add_scalar(tag, value, iteration + 1)
-        
+
         if self.best_reward != -float('inf'):
             info = {
                 'mean_episode_reward_last_100': mean_episode_reward,
                 'best_mean_episode_reward': self.best_reward
             }
-        
+
             for tag, value in info.items():
                 self.logger.add_scalar(tag, value, iteration + 1)
 
@@ -364,3 +333,14 @@ class DQNAgent:
         model_save_path = "models/%s_%d_%s.model" % (
             add_str, iteration, str(time.ctime()).replace(' ', '_'))
         torch.save(self.Q_.state_dict(), model_save_path)
+
+    @staticmethod
+    def get_wrapper_by_name(env, classname):
+        wrapper_layer = env
+        while True:
+            if classname in wrapper_layer.__class__.__name__:
+                return wrapper_layer
+            elif isinstance(env, gym.Wrapper):
+                wrapper_layer = wrapper_layer.env
+            else:
+                raise ValueError("Couldn't find wrapper named %s" % classname)

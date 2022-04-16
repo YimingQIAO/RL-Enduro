@@ -6,3 +6,4 @@ tensorflow~=2.8.0
 attrs~=21.4.0
 pillow~=9.1.0
 opencv-python~=4.5.5.64
+tensorboardx~=2.5
