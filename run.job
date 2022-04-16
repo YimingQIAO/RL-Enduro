@@ -13,27 +13,31 @@ set -u  # throw an error if unset variable referenced
 set -e  # exit on error
 
 # helper vars
-PYLON1=/pylon1/$(id -gn)/$USER
-PYLON2=/pylon2/$(id -gn)/$USER
+# PYLON1=/pylon1/$(id -gn)/$USER
+# PYLON2=/pylon2/$(id -gn)/$USER
 
-module load cuda/8.0
+# module load cuda/8.0
 
 # select which python module you want 2/3
-module load python3
+# module load python3
 # module load python2
 
 # switch to pylon1
 # NOTE: Files in this directory are deleted when 30 days old
-pushd $PYLON1
+# pushd $PYLON1
 
 # turn on the virtualenv
-source $PYLON2/my-virtualenv/bin/activate
+# source $PYLON2/my-virtualenv/bin/activate
+# conda activate RL-Enduro
 
 # run the experiment script
-python $PYLON2/deeprl_hw2/dqn_atari.py --env Breakout-v0
+python dqn_atari.py --gpu 0 --model LN --is_double false &
+python dqn_atari.py --gpu 1 --model LN --is_double true &
+python dqn_atari.py --gpu 2 --model DQN --is_double false &
+python dqn_atari.py --gpu 3 --model DQN --is_double true &
 
 # turn off the virtualenv
-deactivate
+#deactivate
 
 # go back to the original dir
-popd
+# popd

@@ -11,7 +11,7 @@ import numpy as np
 from tensorboardX import SummaryWriter
 
 LOG_EVERY_N_STEPS = 1000
-SAVE_MODEL_EVERY_N_STEPS = 50000
+SAVE_MODEL_EVERY_N_STEPS = 100000
 
 
 class DQNAgent:
@@ -58,8 +58,8 @@ class DQNAgent:
                  num_burn_in,
                  train_freq,
                  batch_size,
-                 learning_starts,
-                 log_dir):
+                 log_dir,
+                 is_double):
         self.Q_ = q_network
         self.Q_target_ = q_network
 
@@ -70,8 +70,8 @@ class DQNAgent:
         self.num_burn_in_ = num_burn_in
         self.train_freq_ = train_freq
         self.batch_size_ = batch_size
-        self.learning_starts_ = learning_starts
         self.logger = SummaryWriter(log_dir=log_dir)
+        self.is_double_ = is_double
 
         # define network optimizer placeholder
         self.optimizer = None
@@ -124,12 +124,12 @@ class DQNAgent:
 
     def double_dqn(self, states, actions, rewards, next_states, dones):
         q_values = self.Q_(states)
-        q_s_a = q_values.gather(1, actions.unsqueeze(1)).sequeeze()
+        q_s_a = q_values.gather(1, actions.unsqueeze(1)).squeeze()
 
         next_q_values = self.Q_(next_states)
         next_q_target_values = self.Q_target_(next_states)
         _, next_actions = next_q_values.detach().max(1)
-        next_q_s_a = next_q_target_values.gather(1, next_actions.unsqueeze(1)).sequeeze()
+        next_q_s_a = next_q_target_values.gather(1, next_actions.unsqueeze(1)).squeeze()
         next_q_s_a = (1 - dones) * next_q_s_a
 
         return self.loss_func(rewards + self.gamma * next_q_s_a, q_s_a)
@@ -167,7 +167,7 @@ class DQNAgent:
             return self.greedy_policy.select_action(q_s_a)
 
         # Warm up for training, uniform policy
-        if iteration < self.learning_starts_:
+        if iteration < self.num_burn_in_:
             return self.uniform_policy.select_action()
 
         # Training stage, decay policy
@@ -222,7 +222,10 @@ class DQNAgent:
                 states, actions, rewards, next_states, dones = self.__batch_sample()
 
                 # get loss
-                loss = self.nature_dqn(states, actions, rewards, next_states, dones)
+                if self.is_double_:
+                    loss = self.double_dqn(states, actions, rewards, next_states, dones)
+                else:
+                    loss = self.nature_dqn(states, actions, rewards, next_states, dones)
 
                 # backwards pass
                 self.optimizer.zero_grad()
@@ -291,7 +294,7 @@ class DQNAgent:
 
         print("---------------------------------")
         print("Timestep %d" % (iteration,))
-        print("learning started? %d" % (iteration > self.learning_starts_))
+        print("learning started? %d" % (iteration > self.num_burn_in_))
         print("mean reward (100 episodes) %f" % mean_episode_reward)
         print("best mean reward %f" % self.best_reward)
         print("episodes %d" % len(episode_rewards))
@@ -301,7 +304,7 @@ class DQNAgent:
         # ============ TensorBoard logging ============#
         # (1) Log the scalar values
         info = {
-            'learning_started': (iteration > self.learning_starts_),
+            'learning_started': (iteration > self.num_burn_in_),
             'learng_rate': self.optimizer.param_groups[0]['lr'],
             'num_episodes': len(episode_rewards),
             'exploration': self.decay_policy.epsilon,
@@ -329,7 +332,10 @@ class DQNAgent:
     def __save_model(self, iteration):
         if not os.path.exists("models"):
             os.makedirs("models")
-        add_str = ''
+        add_str = self.Q_.__class__.__name__
+        if self.is_double_:
+            add_str += "-Double"
+
         model_save_path = "models/%s_%d_%s.model" % (
             add_str, iteration, str(time.ctime()).replace(' ', '_'))
         torch.save(self.Q_.state_dict(), model_save_path)

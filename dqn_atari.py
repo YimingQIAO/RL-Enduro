@@ -46,7 +46,7 @@ def create_model(window, input_shape, num_actions,
     pass
 
 
-def get_output_folder(parent_dir, env_name):
+def get_output_folder(parent_dir, env_name, is_double):
     """Return save folder.
 
     Assumes folders in the parent_dir have suffix -run{run
@@ -69,6 +69,9 @@ def get_output_folder(parent_dir, env_name):
     """
     os.makedirs(parent_dir, exist_ok=True)
 
+    if is_double:
+      env_name += "-DoubleQ"
+
     parent_dir = os.path.join(parent_dir, env_name)
     parent_dir = parent_dir + time.strftime("-%m-%d-%H-%M")
     return parent_dir
@@ -83,21 +86,21 @@ def main():  # noqa: D103
     parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
     parser.add_argument('--memory', type=int, default=1000000, help='replay_buffer_size')
     parser.add_argument('--gamma', default=0.99, type=float, help='discount factor')
-    parser.add_argument('--num_burn_in', default=64, type=int, help='num burn in')
+    parser.add_argument('--num_burn_in', default=50000, type=int, help='num burn in')
     parser.add_argument('--freq', default=10000, type=int, help='Target network update frequency')
     parser.add_argument('--bs', default=32, type=int, help='batch size')
     parser.add_argument('--lr', default=0.00025, type=float, help='learning rate')
-    parser.add_argument('--start', default=50000, type=int, help='Replay start size')
     parser.add_argument('--eps_max', default=1, type=float, help='epsilon start')
     parser.add_argument('--eps_min', default=0.1, type=float, help='epsilon end')
     parser.add_argument('--frames', default=1e6, type=int, help='linear_num_frames')
-    parser.add_argument('--iters', default=5000000, type=int, help='iters')
+    parser.add_argument('--iters', default=5000001, type=int, help='iters')
 
-    parser.add_argument('--model', default='DQN', type=str, help='LN, DQN, DDQN')
+    parser.add_argument('--model', default='DQN', type=str, help='LN, DQN')
+    parser.add_argument('--is_double', default=False, type=bool, help='use double Q-netowkr if true')
 
     args = parser.parse_args()
-    args.output = get_output_folder(args.output, args.model)
-    args.log = get_output_folder(args.log, args.model)
+    args.output = get_output_folder(args.output, args.model, args.is_double)
+    args.log = get_output_folder(args.log, args.model, args.is_double)
     env = gym.make(args.env)
     env.reset()
     env = wrappers.Monitor(env, args.output, force=True)
@@ -112,7 +115,6 @@ def main():  # noqa: D103
     train_freq = 4
     batch_size = args.bs
     learning_rate = args.lr
-    learning_starts = args.start
     num_actions = env.action_space.n
     img_h, img_w, img_c = env.observation_space.shape
     input_shape = [img_h, img_w, window_size * img_c]
@@ -130,7 +132,7 @@ def main():  # noqa: D103
         replay_buffer = ReplayMemory(replay_buffer_size, window_size)
 
         agent = DQNAgent(Q_model, replay_buffer, gamma, target_update_freq, num_burn_in, train_freq, batch_size,
-                         learning_starts, args.log)
+                         args.log, args.is_double)
 
         epsilon_start = args.eps_max
         epsilon_end = args.eps_min
