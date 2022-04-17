@@ -2,11 +2,11 @@
 """Run Atari Environment with DQN."""
 import gym
 import os
-from deeprl_hw2.atari_wrappers_deepmind import wrap_deepmind
+from deeprl_hw2.wrappers import Wrap
 import warnings
 from deeprl_hw2.dqn import DQNAgent
 from deeprl_hw2.models import *
-from deeprl_hw2.core import ReplayMemory
+from deeprl_hw2.replay_buffer import ReplayBuffer
 import torch
 from gym import wrappers
 import argparse
@@ -102,9 +102,8 @@ def main():  # noqa: D103
     args.output = get_output_folder(args.output, args.model, args.is_double)
     args.log = get_output_folder(args.log, args.model, args.is_double)
     env = gym.make(args.env)
+    env = Wrap(env, args.output)
     env.reset()
-    env = wrappers.Monitor(env, args.output, force=True)
-    env = wrap_deepmind(env)
 
     # hyper parameters
     replay_buffer_size = args.memory
@@ -116,20 +115,19 @@ def main():  # noqa: D103
     batch_size = args.bs
     learning_rate = args.lr
     num_actions = env.action_space.n
-    img_h, img_w, img_c = env.observation_space.shape
-    input_shape = [img_h, img_w, window_size * img_c]
+    input_shape = list(env.observation_space.shape)
 
     cuda_device = args.gpu
 
     with torch.cuda.device(cuda_device):
         if args.model == 'DQN':
-            Q_model = DQN(input_shape[2], num_actions)
+            Q_model = DQN(input_shape, num_actions)
         elif args.model == 'LN':
             Q_model = LinearNetwork(input_shape, num_actions)
         else:
             raise NotImplementedError
         Q_model.to(cuda_device)
-        replay_buffer = ReplayMemory(replay_buffer_size, window_size)
+        replay_buffer = ReplayBuffer(replay_buffer_size, input_shape, batch_size)
 
         agent = DQNAgent(Q_model, replay_buffer, gamma, target_update_freq, num_burn_in, train_freq, batch_size,
                          args.log, args.is_double)

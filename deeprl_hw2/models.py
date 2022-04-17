@@ -21,7 +21,7 @@ class LinearNetwork(nn.Module):
 class DQN(nn.Module):
     def __init__(self, in_channels, num_actions):
         super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=32, kernel_size=8, stride=4)
+        self.conv1 = nn.Conv2d(in_channels=in_channels[0], out_channels=32, kernel_size=8, stride=4)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2)
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1)
 
