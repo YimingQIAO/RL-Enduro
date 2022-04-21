@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 attrs
 gym
 h5py
@@ -10,3 +11,13 @@ pydot-ng
 scipy
 semver
 -e .
+=======
+gym~=0.23.1
+matplotlib~=3.5.1
+torch~=1.11.0
+numpy~=1.22.3
+attrs~=21.4.0
+pillow~=9.1.0
+opencv-python~=4.5.5.64
+tensorboardx~=2.5
+>>>>>>> Stashed changes
