@@ -1,0 +1,45 @@
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH -p GPU-shared
+#SBATCH --ntasks-per-node 2
+#SBATCH --gres=gpu:k80:1
+#SBATCH -t 10:00:00
+
+# this will request 2 CPU cores, an one k80 on a shared GPU node
+# if the job is still running after 10 hours, it will be automatically killed.
+
+set -x  # echo commands to stdout
+set -u  # throw an error if unset variable referenced
+set -e  # exit on error
+
+# helper vars
+# PYLON1=/pylon1/$(id -gn)/$USER
+# PYLON2=/pylon2/$(id -gn)/$USER
+
+# module load cuda/8.0
+
+# select which python module you want 2/3
+# module load python3
+# module load python2
+
+# switch to pylon1
+# NOTE: Files in this directory are deleted when 30 days old
+# pushd $PYLON1
+
+# turn on the virtualenv
+# source $PYLON2/my-virtualenv/bin/activate
+# conda activate RL-Enduro
+
+# run the experiment script
+python dqn_atari.py --gpu 0 --model LN --double 0 --num_burn_in 50000 --iter 3000000 &
+python dqn_atari.py --gpu 1 --model LN --double 1 --num_burn_in 50000 --iters 3000000 &
+python dqn_atari.py --env Enduro-v0 --gpu 2 --model DQN --double 0 --num_burn_in 50000 --iters 3000000 &
+python dqn_atari.py --env Enduro-v0 --gpu 3 --model DQN --double 1 --num_burn_in 50000 --iters 3000000 &
+python dqn_atari.py --env Enduro-v0 --gpu 0 --model DDQN --double 0 --num_burn_in 50000 --iters 3000000 &
+python dqn_atari.py --env Enduro-v0 --gpu 1 --model DDQN --double 1 --num_burn_in 50000 --iters 3000000 &
+
+# turn off the virtualenv
+#deactivate
+
+# go back to the original dir
+# popd
