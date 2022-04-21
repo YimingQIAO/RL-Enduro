@@ -1,15 +1,12 @@
-from gym.wrappers import RecordVideo, RecordEpisodeStatistics, GrayScaleObservation, FrameStack, TransformReward, \
-    AtariPreprocessing
+from gym.wrappers import RecordVideo, RecordEpisodeStatistics, GrayScaleObservation, FrameStack, TransformReward, AtariPreprocessing
 import gym
 import cv2
 from collections import deque
 import numpy as np
-import matplotlib.pyplot as plt
-
+import matplotlib.pyplot as plt 
 
 def always_true(x):
     return True
-
 
 class RepeatActionInFramesTakeMaxOfTwo(gym.Wrapper):
     def __init__(self, env, h=160, repeat=4):
@@ -17,8 +14,8 @@ class RepeatActionInFramesTakeMaxOfTwo(gym.Wrapper):
 
         self.repeat = repeat
         self.h = h
-        # self.shape = env.observation_space.low.shape
-        self.shape = (h, env.observation_space.low.shape[1], env.observation_space.low.shape[2])
+        #self.shape = env.observation_space.low.shape
+        self.shape = (h,env.observation_space.low.shape[1],env.observation_space.low.shape[2])
         self.frames = deque(maxlen=2)
 
         if repeat <= 0:
@@ -33,7 +30,7 @@ class RepeatActionInFramesTakeMaxOfTwo(gym.Wrapper):
         for i in range(self.repeat):
             observation, reward, done, info = self.env.step(action)
             total_reward += reward
-            self.frames.append(observation[:self.h, :, :])
+            self.frames.append(observation[:self.h,:,:])
 
             if done:
                 break
@@ -45,9 +42,8 @@ class RepeatActionInFramesTakeMaxOfTwo(gym.Wrapper):
     def reset(self):
         observation = self.env.reset()
         self.frames.clear()
-        self.frames.append(observation[:self.h, :, :])
-        return observation[:self.h, :, :]
-
+        self.frames.append(observation[:self.h,:,:])
+        return observation[:self.h,:,:]
 
 class NormResizeObservation(gym.ObservationWrapper):
     def __init__(self, env, shape):
@@ -67,11 +63,10 @@ class NormResizeObservation(gym.ObservationWrapper):
         observation = cv2.resize(observation, self.shape, interpolation=cv2.INTER_AREA)
         return (observation / 255.0).reshape(self.shape)
 
-
 class ClipRewardWrapper(gym.RewardWrapper):
     def __init__(self, env):
         super().__init__(env)
-
+    
     def reward(self, reward):
         def clip(x):
             if x < 0:
@@ -79,9 +74,8 @@ class ClipRewardWrapper(gym.RewardWrapper):
             if x > 0:
                 return 1
             return 0
-
         vec_clip = np.vectorize(clip)
-        return vec_clip(reward)
+        return vec_clip(reward) 
 
 
 def Wrap(env, video_dir):
