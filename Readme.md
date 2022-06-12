@@ -1,4 +1,4 @@
-# Introduction to Q-learning with Deep neural Network
+# Introduction to Q-learning with Deep Neural Network
 
 This file will help you setup and run the codes.
 
